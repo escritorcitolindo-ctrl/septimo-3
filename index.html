@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Flashcards Kids - Ecuador Edition</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #FF6B6B;
+            --secondary: #4ECDC4;
+            --dark: #2F2F2F;
+            --white: #FFFFFF;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background-color: #f0f8ff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        #game-container {
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .card-container {
+            perspective: 1000px;
+            width: 100%;
+            height: 400px;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+
+        .card {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 20px;
+        }
+
+        .card.is-flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 20px;
+            padding: 20px;
+            box-sizing: border-box;
+            background: var(--white);
+            border: 5px solid var(--secondary);
+        }
+
+        .card-back {
+            background: var(--primary);
+            color: white;
+            transform: rotateY(180deg);
+            border: 5px solid var(--white);
+        }
+
+        .flash-img {
+            width: 80%;
+            height: 200px;
+            object-fit: contain;
+            border-radius: 15px;
+            margin-bottom: 15px;
+        }
+
+        .word-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--dark);
+        }
+
+        .card-back .word-text {
+            color: white;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 50px;
+            background: var(--secondary);
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+            display: none; /* Oculto por defecto */
+        }
+
+        .btn:hover { background: #3db7af; }
+
+        #end-screen {
+            display: none;
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        input {
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 10px;
+            border: 2px solid var(--secondary);
+            margin-bottom: 10px;
+        }
+
+        #leaderboard {
+            margin-top: 20px;
+            text-align: left;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <h2 id="counter">1 / 20</h2>
+    <div class="card-container" onclick="flipCard()">
+        <div class="card" id="card">
+            <div class="card-face card-front">
+                <img id="img-front" class="flash-img" src="" alt="vocab-img">
+                <div id="text-en" class="word-text"></div>
+            </div>
+            <div class="card-face card-back">
+                <div id="text-es" class="word-text"></div>
+            </div>
+        </div>
+    </div>
+    <button id="next-btn" class="btn" onclick="nextCard()">Siguiente →</button>
+
+    <div id="end-screen">
+        <h1 style="color: var(--primary);">GAME OVER</h1>
+        <p>¡Increíble trabajo! Ingresa tu nombre para el registro:</p>
+        <input type="text" id="player-name" placeholder="Tu nombre aquí...">
+        <button class="btn" style="display:inline-block;" onclick="savePlayer()">Guardar Registro</button>
+        
+        <div id="leaderboard">
+            <h3>Participantes:</h3>
+            <ul id="player-list"></ul>
+        </div>
+    </div>
+</div>
+
+<script>
+    const vocabulary = [
+        { en: "my pink zip-up hoodie", es: "mi chompa rosada con cierre", img: "https://m.media-amazon.com/images/I/71N1o3-N7GL._AC_UY1000_.jpg" },
+        { en: "it is made of wool", es: "está hecho de lana", img: "https://upload.wikimedia.org/wikipedia/commons/e/e4/Sheep_wool_textures.jpg" },
+        { en: "I can wear it to the gym", es: "puedo usarla para ir al gimnasio", img: "https://img.freepik.com/free-vector/kids-gym-concept-illustration_114360-9017.jpg" },
+        { en: "around the house to be comfortable", es: "en la casa para estar cómoda", img: "https://img.freepik.com/free-vector/stay-home-concept-illustration_114360-1200.jpg" },
+        { en: "over a shirt", es: "sobre una camisa", img: "https://m.media-amazon.com/images/I/71h3zWb4W8L._AC_UX679_.jpg" },
+        { en: "dressed-up look", es: "un look elegante", img: "https://img.freepik.com/free-vector/cute-boy-wearing-tuxedo_1308-133547.jpg" },
+        { en: "it goes with everything", es: "combina con todo", img: "https://img.freepik.com/free-vector/color-palette-guide-sample_23-2148419630.jpg" },
+        { en: "I wear it with a skirt", es: "yo la uso con una falda", img: "https://img.freepik.com/free-vector/skirt_1308-85474.jpg" },
+        { en: "I wear it with jeans", es: "yo la uso con jeans", img: "https://img.freepik.com/free-vector/blue-jeans-isolated_1308-111107.jpg" },
+        { en: "it is colorful", es: "es colorido", img: "https://img.freepik.com/free-vector/hand-drawn-rainbow-background_23-2148812674.jpg" },
+        { en: "it looks good", es: "se ve muy bien", img: "https://img.freepik.com/free-vector/thumbs-up-boy-character_1308-133550.jpg" },
+        { en: "my pet's name", es: "el nombre de mi mascota", img: "https://img.freepik.com/free-vector/cute-dog-cat-best-friends_1308-133538.jpg" },
+        { en: "brothers and sisters", es: "hermanos y hermanas", img: "https://img.freepik.com/free-vector/happy-children-jumping-together_1308-133528.jpg" },
+        { en: "my grandparents", es: "mis abuelitos", img: "https://img.freepik.com/free-vector/happy-elderly-couple-holding-hands_1308-133512.jpg" },
+        { en: "my favorite song", es: "mi canción favorita", img: "https://img.freepik.com/free-vector/music-note-icon-illustration_1308-133505.jpg" },
+        { en: "twins", es: "gemelos", img: "https://img.freepik.com/free-vector/cute-twin-brothers_1308-133518.jpg" },
+        { en: "my birthday", es: "mi cumpleaños", img: "https://img.freepik.com/free-vector/birthday-cake-with-candles_1308-133501.jpg" },
+        { en: "my piano lessons", es: "mis clases de piano", img: "https://img.freepik.com/free-vector/boy-playing-piano-cartoon_1308-133514.jpg" },
+        { en: "I practice volleyball", es: "yo practico vóleibol", img: "https://img.freepik.com/free-vector/young-people-playing-volleyball_1308-133522.jpg" },
+        { en: "I go to bed", es: "yo me voy a dormir", img: "https://img.freepik.com/free-vector/boy-sleeping-bed_1308-133509.jpg" },
+        { en: "candies", es: "caramelos", img: "https://img.freepik.com/free-vector/sweet-candies-collection_1308-133503.jpg" }
+    ];
+
+    let currentIndex = 0;
+    let flipped = false;
+
+    function speak(text, lang) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = lang;
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    function updateCard() {
+        const item = vocabulary[currentIndex];
+        document.getElementById('text-en').innerText = item.en;
+        document.getElementById('text-es').innerText = item.es;
+        document.getElementById('img-front').src = item.img;
+        document.getElementById('counter').innerText = `${currentIndex + 1} / ${vocabulary.length}`;
+        
+        document.getElementById('card').classList.remove('is-flipped');
+        document.getElementById('next-btn').style.display = 'none';
+        flipped = false;
+        
+        // Habla inglés al aparecer
+        speak(item.en, 'en-US');
+    }
+
+    function flipCard() {
+        const card = document.getElementById('card');
+        card.classList.toggle('is-flipped');
+        
+        const item = vocabulary[currentIndex];
+        
+        if (!flipped) {
+            // Se voltea por primera vez
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            document.getElementById('next-btn').style.display = 'inline-block';
+            speak(item.es, 'es-MX');
+            flipped = true;
+        } else {
+            // Si ya estaba volteada, repite el audio según el lado
+            if (card.classList.contains('is-flipped')) {
+                speak(item.es, 'es-MX');
+            } else {
+                speak(item.en, 'en-US');
+            }
+        }
+    }
+
+    function nextCard() {
+        if (currentIndex < vocabulary.length - 1) {
+            currentIndex++;
+            updateCard();
+        } else {
+            showEndScreen();
+        }
+    }
+
+    function showEndScreen() {
+        document.querySelector('.card-container').style.display = 'none';
+        document.getElementById('counter').style.display = 'none';
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('end-screen').style.display = 'block';
+        loadPlayers();
+    }
+
+    function savePlayer() {
+        const name = document.getElementById('player-name').value;
+        if (!name) return alert("¡Pon tu nombre!");
+        
+        let players = JSON.parse(localStorage.getItem('flashcard_players') || "[]");
+        players.push(name);
+        localStorage.setItem('flashcard_players', JSON.stringify(players));
+        
+        document.getElementById('player-name').value = "";
+        loadPlayers();
+    }
+
+    function loadPlayers() {
+        const list = document.getElementById('player-list');
+        list.innerHTML = "";
+        let players = JSON.parse(localStorage.getItem('flashcard_players') || "[]");
+        players.forEach(p => {
+            let li = document.createElement('li');
+            li.textContent = p;
+            list.appendChild(li);
+        });
+    }
+
+    // Iniciar
+    updateCard();
+</script>
+</body>
+</html>
